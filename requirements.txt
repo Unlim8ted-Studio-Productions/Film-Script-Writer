@@ -1,0 +1,6 @@
+requests==2.31.0
+beautifulsoup4==4.12.2
+transformers==4.30.2
+datasets==2.13.0
+torch==2.0.1
+# to use run the command 'pip install -r requirements.txt' in order to install required moduals. If you have a powerful GPU you can choose to go to pytorch.org to get instructions on how to install a GPU version of pytorch which may speed up training and generating.
