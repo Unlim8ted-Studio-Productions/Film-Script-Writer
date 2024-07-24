@@ -1,58 +1,70 @@
-def main(): 
-    from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments
+def main():
+    from transformers import (
+        GPT2LMHeadModel,
+        GPT2Tokenizer,
+        Trainer,
+        TrainingArguments,
+        AdamW,
+        get_linear_schedule_with_warmup,
+    )
     from datasets import load_from_disk
     import torch
-    from transformers import AdamW, get_linear_schedule_with_warmup
 
     # Load the dataset from disk
-    dataset = load_from_disk('dataset')
+    dataset = load_from_disk("dataset")
 
     # Split the dataset into train and test sets
     train_test_split = dataset.train_test_split(test_size=0.1)
-    train_dataset = train_test_split['train']
-    test_dataset = train_test_split['test']
+    train_dataset = train_test_split["train"]
+    test_dataset = train_test_split["test"]
 
     # Load the tokenizer and model
-    tokenizer = GPT2Tokenizer.from_pretrained('distilgpt2')  # Use a smaller model instead of the previouse gpt-2
+    tokenizer = GPT2Tokenizer.from_pretrained(
+        "distilgpt2"
+    )  # Use a smaller model instead of the previouse gpt-2
 
     # GPT-2 doesn't have a padding token by default, so we set it to the eos_token
     tokenizer.pad_token = tokenizer.eos_token
 
     # Load the pre-trained GPT-2 model
-    model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+    model = GPT2LMHeadModel.from_pretrained("distilgpt2")
     model.config.pad_token_id = tokenizer.pad_token_id
 
     # Move model to GPU if available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
     # Tokenize the dataset
     def tokenize_function(examples):
         # Tokenize the text with padding and truncation
         tokenized_text = tokenizer(
-            examples['text'],
-            padding='max_length',
+            examples["text"],
+            padding="max_length",
             truncation=True,
-            max_length=512  # Set to a smaller length for quicker training
+            max_length=512,  # Set to a smaller length for quicker training
         )
         # Set labels to be the same as input_ids for language modeling
-        tokenized_text['labels'] = tokenized_text['input_ids']
+        tokenized_text["labels"] = tokenized_text["input_ids"]
         return tokenized_text
 
     # Apply the tokenization function to the train and test datasets with multiprocessing
-    tokenized_train_dataset = train_dataset.map(tokenize_function, batched=True, num_proc=4)
-    tokenized_test_dataset = test_dataset.map(tokenize_function, batched=True, num_proc=4)
+    tokenized_train_dataset = train_dataset.map(
+        tokenize_function, batched=True, num_proc=4
+    )
+    tokenized_test_dataset = test_dataset.map(
+        tokenize_function, batched=True, num_proc=4
+    )
 
     # Define the training arguments
     training_args = TrainingArguments(
-        output_dir='./results',
+        output_dir="./results",
         overwrite_output_dir=True,
         num_train_epochs=3,
         per_device_train_batch_size=4,  # Increase batch size
         per_device_eval_batch_size=4,
         warmup_steps=50,
         weight_decay=0.01,
-        logging_dir='./logs',
+        logging_dir="./logs",
         logging_steps=10,
         evaluation_strategy="steps",
         eval_steps=50,
@@ -64,8 +76,14 @@ def main():
 
     # Define optimizer and scheduler
     optimizer = AdamW(model.parameters(), lr=5e-5)
-    total_steps = len(tokenized_train_dataset) // training_args.per_device_train_batch_size * training_args.num_train_epochs
-    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=50, num_training_steps=total_steps)
+    total_steps = (
+        len(tokenized_train_dataset)
+        // training_args.per_device_train_batch_size
+        * training_args.num_train_epochs
+    )
+    scheduler = get_linear_schedule_with_warmup(
+        optimizer, num_warmup_steps=50, num_training_steps=total_steps
+    )
 
     # Initialize the Trainer
     trainer = Trainer(
@@ -73,21 +91,22 @@ def main():
         args=training_args,
         train_dataset=tokenized_train_dataset,
         eval_dataset=tokenized_test_dataset,
-        optimizers=(optimizer, scheduler)  # Pass optimizer and scheduler
+        optimizers=(optimizer, scheduler),  # Pass optimizer and scheduler
     )
 
     # Train the model
     trainer.train()
 
     # Save the fine-tuned model and tokenizer
-    model.save_pretrained('fine_tuned_gpt2')
-    tokenizer.save_pretrained('fine_tuned_gpt2')
+    model.save_pretrained("fine_tuned_gpt2")
+    tokenizer.save_pretrained("fine_tuned_gpt2")
+
 
 if __name__ == "__main__":
     main()
 
 
-#def main():
+# def main():
 #    import torch
 #    from transformers import (
 #        GPT2LMHeadModel,
@@ -223,6 +242,6 @@ if __name__ == "__main__":
 #        tokenizer.save_pretrained('fine_tuned_gpt2')
 #        pbar.update(1)
 #    print("Finished saving model and tokenizer.\n")
-#    
-#if __name__ == "__main__":
+#
+# if __name__ == "__main__":
 #    main()

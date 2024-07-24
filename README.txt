@@ -1,0 +1,1 @@
+To train new model run scrape-data.py or gather txt files containing film scripts and put them in the scripts folder. Next run the data2database script to convert the data into a single database file which then can be used in train.py to train a new model. Once you train a new model or decide to use a pretrained one run generate.py.
